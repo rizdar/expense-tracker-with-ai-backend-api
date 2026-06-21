@@ -63,7 +63,7 @@ let AuthService = AuthService_1 = class AuthService {
     async register(dto) {
         const existingUser = await this.usersService.findByEmail(dto.email);
         if (existingUser) {
-            throw new common_1.ConflictException('Email sudah terdaftar');
+            throw new common_1.ConflictException('Email already registered');
         }
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const emailVerifyToken = crypto.randomBytes(32).toString('hex');
@@ -74,7 +74,7 @@ let AuthService = AuthService_1 = class AuthService {
             emailVerifyToken,
             emailVerified: false,
         });
-        this.logger.log(`[SIMULASI EMAIL] Token verifikasi untuk ${newUser.email}: ${emailVerifyToken}`);
+        this.logger.log(`[EMAIL SIMULATION] Verification token for ${newUser.email}: ${emailVerifyToken}`);
         return {
             success: true,
             message: 'Registration successful. Please check your email to verify your account.',
@@ -142,11 +142,11 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.NotFoundException('User not found');
         }
         if (user.emailVerified) {
-            throw new common_1.BadRequestException('Email sudah diverifikasi');
+            throw new common_1.BadRequestException('Email already verified');
         }
         const emailVerifyToken = crypto.randomBytes(32).toString('hex');
         await this.usersService.updateUser(user.id, { emailVerifyToken });
-        this.logger.log(`[SIMULASI EMAIL] Token verifikasi baru untuk ${user.email}: ${emailVerifyToken}`);
+        this.logger.log(`[EMAIL SIMULATION] New verification token for ${user.email}: ${emailVerifyToken}`);
         return {
             success: true,
             message: 'New verification email sent successfully.',
@@ -155,14 +155,14 @@ let AuthService = AuthService_1 = class AuthService {
     async login(dto) {
         const user = await this.usersService.findByEmail(dto.email);
         if (!user) {
-            throw new common_1.UnauthorizedException('Email atau password salah');
+            throw new common_1.UnauthorizedException('Incorrect email or password');
         }
         const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
         if (!isMatch) {
-            throw new common_1.UnauthorizedException('Email atau password salah');
+            throw new common_1.UnauthorizedException('Incorrect email or password');
         }
         if (!user.emailVerified) {
-            throw new common_1.ForbiddenException('Email Anda belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.');
+            throw new common_1.ForbiddenException('Your email has not been verified. Please verify your email first.');
         }
         const tokens = await this.generateTokenPair(user);
         await this.prisma.auditLog.create({
@@ -210,7 +210,7 @@ let AuthService = AuthService_1 = class AuthService {
             };
         }
         catch (err) {
-            throw new common_1.UnauthorizedException('Refresh token tidak valid atau telah kedaluwarsa');
+            throw new common_1.UnauthorizedException('Refresh token is invalid or has expired');
         }
     }
     async logout(inputRefreshToken) {
@@ -249,7 +249,7 @@ let AuthService = AuthService_1 = class AuthService {
         if (!user) {
             return {
                 success: true,
-                message: 'Instruksi reset password telah dikirim ke email Anda jika terdaftar.',
+                message: 'Password reset instructions have been sent to your email if registered.',
             };
         }
         const passwordResetToken = crypto.randomBytes(32).toString('hex');
@@ -258,10 +258,10 @@ let AuthService = AuthService_1 = class AuthService {
             passwordResetToken,
             passwordResetExpiry,
         });
-        this.logger.log(`[SIMULASI EMAIL] Token reset password untuk ${user.email}: ${passwordResetToken}`);
+        this.logger.log(`[EMAIL SIMULATION] Password reset token for ${user.email}: ${passwordResetToken}`);
         return {
             success: true,
-            message: 'Instruksi reset password telah dikirim ke email Anda jika terdaftar.',
+            message: 'Password reset instructions have been sent to your email if registered.',
         };
     }
     async resetPassword(dto) {
@@ -294,7 +294,7 @@ let AuthService = AuthService_1 = class AuthService {
         }
         const isMatch = await bcrypt.compare(dto.oldPassword, user.passwordHash);
         if (!isMatch) {
-            throw new common_1.BadRequestException('Password lama salah');
+            throw new common_1.BadRequestException('Incorrect old password');
         }
         const passwordHash = await bcrypt.hash(dto.newPassword, 10);
         await this.usersService.updateUser(user.id, {

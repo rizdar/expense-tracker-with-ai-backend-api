@@ -32,11 +32,15 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const nest_winston_1 = require("nest-winston");
 const winston = __importStar(require("winston"));
+const winston_daily_rotate_file_1 = __importDefault(require("winston-daily-rotate-file"));
 const nestjs_zod_1 = require("nestjs-zod");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
 const swagger_1 = require("@nestjs/swagger");
@@ -46,6 +50,24 @@ async function bootstrap() {
             new winston.transports.Console({
                 level: process.env.LOG_LEVEL || 'debug',
                 format: winston.format.combine(winston.format.timestamp(), winston.format.ms(), winston.format.json()),
+            }),
+            new winston_daily_rotate_file_1.default({
+                filename: 'logs/error-%DATE%.log',
+                datePattern: 'YYYY-MM-DD',
+                zippedArchive: true,
+                maxSize: '20m',
+                maxFiles: '30d',
+                level: 'error',
+                format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+            }),
+            new winston_daily_rotate_file_1.default({
+                filename: 'logs/combined-%DATE%.log',
+                datePattern: 'YYYY-MM-DD',
+                zippedArchive: true,
+                maxSize: '20m',
+                maxFiles: '30d',
+                level: process.env.LOG_LEVEL || 'info',
+                format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
             }),
         ],
     });

@@ -32,7 +32,7 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const existingUser = await this.usersService.findByEmail(dto.email);
     if (existingUser) {
-      throw new ConflictException('Email sudah terdaftar');
+      throw new ConflictException('Email already registered');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -46,8 +46,8 @@ export class AuthService {
       emailVerified: false,
     });
 
-    // Simulasi pengiriman email verifikasi dengan mencetaknya ke logger
-    this.logger.log(`[SIMULASI EMAIL] Token verifikasi untuk ${newUser.email}: ${emailVerifyToken}`);
+    // Simulate sending verification email by printing it to logger
+    this.logger.log(`[EMAIL SIMULATION] Verification token for ${newUser.email}: ${emailVerifyToken}`);
     
     return {
       success: true,
@@ -133,14 +133,14 @@ export class AuthService {
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email sudah diverifikasi');
+      throw new BadRequestException('Email already verified');
     }
 
     const emailVerifyToken = crypto.randomBytes(32).toString('hex');
     await this.usersService.updateUser(user.id, { emailVerifyToken });
 
-    // Simulasi resend email
-    this.logger.log(`[SIMULASI EMAIL] Token verifikasi baru untuk ${user.email}: ${emailVerifyToken}`);
+    // Simulate resend email
+    this.logger.log(`[EMAIL SIMULATION] New verification token for ${user.email}: ${emailVerifyToken}`);
 
     return {
       success: true,
@@ -151,23 +151,23 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Email atau password salah');
+      throw new UnauthorizedException('Incorrect email or password');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedException('Email atau password salah');
+      throw new UnauthorizedException('Incorrect email or password');
     }
 
     if (!user.emailVerified) {
       throw new ForbiddenException(
-        'Email Anda belum diverifikasi. Silakan verifikasi email Anda terlebih dahulu.',
+        'Your email has not been verified. Please verify your email first.',
       );
     }
 
     const tokens = await this.generateTokenPair(user);
 
-    // Tulis Audit Log LOGIN
+    // Write LOGIN Audit Log
     await this.prisma.auditLog.create({
       data: {
         actorId: user.id,
@@ -223,7 +223,7 @@ export class AuthService {
         data: newTokens,
       };
     } catch (err) {
-      throw new UnauthorizedException('Refresh token tidak valid atau telah kedaluwarsa');
+      throw new UnauthorizedException('Refresh token is invalid or has expired');
     }
   }
 
@@ -241,7 +241,7 @@ export class AuthService {
         data: { revoked: true },
       });
 
-      // Tulis Audit Log LOGOUT
+      // Write LOGOUT Audit Log
       await this.prisma.auditLog.create({
         data: {
           actorId: userId,
@@ -266,28 +266,28 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const user = await this.usersService.findByEmail(email);
-    // Kembalikan pesan sukses palsu untuk keamanan (user enumeration prevention)
+    // Return fake success message for security (user enumeration prevention)
     if (!user) {
       return {
         success: true,
-        message: 'Instruksi reset password telah dikirim ke email Anda jika terdaftar.',
+        message: 'Password reset instructions have been sent to your email if registered.',
       };
     }
 
     const passwordResetToken = crypto.randomBytes(32).toString('hex');
-    const passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 jam dari sekarang
+    const passwordResetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
     await this.usersService.updateUser(user.id, {
       passwordResetToken,
       passwordResetExpiry,
     });
 
-    // Simulasi email reset password
-    this.logger.log(`[SIMULASI EMAIL] Token reset password untuk ${user.email}: ${passwordResetToken}`);
+    // Simulate reset password email
+    this.logger.log(`[EMAIL SIMULATION] Password reset token for ${user.email}: ${passwordResetToken}`);
 
     return {
       success: true,
-      message: 'Instruksi reset password telah dikirim ke email Anda jika terdaftar.',
+      message: 'Password reset instructions have been sent to your email if registered.',
     };
   }
 
@@ -327,7 +327,7 @@ export class AuthService {
 
     const isMatch = await bcrypt.compare(dto.oldPassword, user.passwordHash);
     if (!isMatch) {
-      throw new BadRequestException('Password lama salah');
+      throw new BadRequestException('Incorrect old password');
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
@@ -336,7 +336,7 @@ export class AuthService {
       passwordHash,
     });
 
-    // Tulis Audit Log PASSWORD_CHANGED
+    // Write PASSWORD_CHANGED Audit Log
     await this.prisma.auditLog.create({
       data: {
         actorId: user.id,
@@ -360,7 +360,7 @@ export class AuthService {
       expiresIn: (process.env.JWT_EXPIRY || '24h') as any,
     });
 
-    // Buat record RefreshToken di DB terlebih dahulu
+    // Create RefreshToken record in DB first
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -372,7 +372,7 @@ export class AuthService {
       },
     });
 
-    // Tanda tangani refresh token menggunakan ID record sebagai jti
+    // Sign refresh token using record ID as jti
     const refreshTokenPayload = {
       sub: user.id,
       email: user.email,
