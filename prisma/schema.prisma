@@ -1,0 +1,198 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String              @id @default(uuid())
+  email               String              @unique
+  passwordHash        String
+  name                String
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
+  emailVerified       Boolean             @default(false)
+  emailVerifyToken    String?             @unique
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  workspaces          WorkspaceMember[]
+  refreshTokens       RefreshToken[]
+  deviceTokens        DeviceToken[]
+  invitations         WorkspaceInvitation[]
+  auditLogs           AuditLog[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String   // 'ios' | 'android'
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Workspace {
+  id          String              @id @default(uuid())
+  name        String
+  type        String              // 'PERSONAL', 'UMKM', 'ORGANIZATION'
+  currency    String              @default("IDR")  // ISO 4217
+  timezone    String              @default("UTC")  // 'Asia/Jakarta', etc.
+  deletedAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  members     WorkspaceMember[]
+  categories  Category[]
+  transactions Transaction[]
+  budgets     Budget[]
+  invitations WorkspaceInvitation[]
+  auditLogs   AuditLog[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        String    // 'OWNER', 'ADMIN', 'VIEWER'
+  joinedAt    DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, workspaceId])
+}
+
+model WorkspaceInvitation {
+  id          String    @id @default(uuid())
+  workspaceId String
+  inviterId   String?
+  email       String
+  role        String    // 'ADMIN', 'VIEWER'
+  token       String    @unique
+  status      String    @default("PENDING")  // 'PENDING', 'ACCEPTED', 'REJECTED', 'EXPIRED'
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviter     User?     @relation(fields: [inviterId], references: [id], onDelete: SetNull)
+
+  @@index([token])
+  @@index([email])
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  workspaceId  String
+  name         String
+  type         String        // 'INCOME' or 'EXPENSE'
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([workspaceId, name, type])
+  @@index([deletedAt])
+}
+
+model Transaction {
+  id          String       @id @default(uuid())
+  workspaceId String
+  categoryId  String
+  amount      Decimal      @db.Decimal(15, 2)
+  type        String       // 'INCOME' or 'EXPENSE'
+  notes       String?
+  date        DateTime     @default(now())
+  source      String       // 'MANUAL', 'AI_CHAT', 'AI_OCR'
+  deletedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  category    Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments Attachment[]
+
+  @@index([workspaceId, date])
+  @@index([workspaceId, type])
+  @@index([workspaceId, categoryId])
+  @@index([deletedAt])
+}
+
+model Budget {
+  id          String    @id @default(uuid())
+  workspaceId String
+  categoryId  String?   // null = budget untuk seluruh workspace
+  name        String
+  amount      Decimal   @db.Decimal(15, 2)
+  period      String    // 'MONTHLY', 'WEEKLY', 'CUSTOM'
+  startDate   DateTime?
+  endDate     DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([deletedAt])
+}
+
+model Attachment {
+  id            String      @id @default(uuid())
+  transactionId String
+  fileName      String
+  fileUrl       String      // local path atau S3 URL (bukan presigned)
+  mimeType      String
+  sizeBytes     Int
+  createdAt     DateTime    @default(now())
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  workspaceId String?
+  action      String   // 'CREATE', 'UPDATE', 'DELETE', 'PERMANENT_DELETE', 'EXPORT', 'LOGIN', 'LOGOUT', 'PASSWORD_CHANGED', 'TRANSFER_OWNERSHIP'
+  entity      String   // 'Transaction', 'Category', 'Budget', 'Workspace', 'WorkspaceMember', etc.
+  entityId    String
+  changes     Json?    // { "before": {...}, "after": {...} }
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, entity])
+  @@index([actorId])
+}
+
+model AIPromptUsage {
+  id           String   @id @default(uuid())
+  workspaceId  String
+  userId       String
+  type         String   // 'CHAT', 'OCR', 'INSIGHTS'
+  model        String   // 'deepseek-v4-pro', 'gpt-5', etc.
+  tokensUsed   Int
+  costEstimate Decimal? @db.Decimal(10, 6)  // estimasi biaya dalam USD
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([workspaceId, createdAt])
+}
