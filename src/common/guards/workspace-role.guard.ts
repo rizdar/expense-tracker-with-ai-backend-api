@@ -18,7 +18,18 @@ export class WorkspaceRoleGuard implements CanActivate {
       return false;
     }
 
-    const workspaceId = request.params.id;
+    let workspaceId = request.headers['x-workspace-id'] as string;
+
+    const pathParts = request.path.split('/');
+    const workspacesIndex = pathParts.indexOf('workspaces');
+    if (workspacesIndex !== -1 && pathParts[workspacesIndex + 1] && pathParts[workspacesIndex + 1] !== 'invite') {
+      const possibleId = pathParts[workspacesIndex + 1];
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(possibleId)) {
+        workspaceId = possibleId;
+      }
+    }
+
     if (!workspaceId) {
       return true;
     }
