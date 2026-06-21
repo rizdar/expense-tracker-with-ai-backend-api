@@ -9,11 +9,15 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { FcmService } from '../fcm/fcm.service';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fcmService: FcmService,
+  ) {}
 
   // 1. Create Workspace
   async createWorkspace(userId: string, dto: CreateWorkspaceDto) {
@@ -515,6 +519,30 @@ export class WorkspacesService {
         expiresAt,
       },
     });
+
+    // Send push notification if target user is registered
+    if (targetUser) {
+      const deviceTokens = await this.prisma.deviceToken.findMany({
+        where: { userId: targetUser.id },
+      });
+
+      if (deviceTokens.length > 0) {
+        const workspace = await this.prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { name: true },
+        });
+
+        await this.fcmService.sendToUser(targetUser.id, deviceTokens.map((d) => d.token), {
+          title: 'Workspace Invitation',
+          body: `You've been invited to join workspace '${workspace?.name || 'Unknown'}' as ${dto.role}.`,
+          data: {
+            type: 'WORKSPACE_INVITATION',
+            invitationToken: token,
+            workspaceName: workspace?.name || '',
+          },
+        });
+      }
+    }
 
     console.log(`[EMAIL SIMULATION] Invitation sent to ${email} with token: ${token}`);
     // TODO: Replace with MailService.sendInvitation() when mail module is ready

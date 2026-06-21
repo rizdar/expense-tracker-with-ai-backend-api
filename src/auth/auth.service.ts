@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { FcmService } from '../fcm/fcm.service';
 import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly fcmService: FcmService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -312,6 +314,19 @@ export class AuthService {
       passwordResetToken: null,
       passwordResetExpiry: null,
     });
+
+    // Send push notification
+    const deviceTokens = await this.prisma.deviceToken.findMany({
+      where: { userId: user.id },
+    });
+
+    if (deviceTokens.length > 0) {
+      await this.fcmService.sendToUser(user.id, deviceTokens.map((d) => d.token), {
+        title: 'Password Changed',
+        body: 'Your password has been successfully reset. If this wasn\'t you, please contact support.',
+        data: { type: 'PASSWORD_RESET' },
+      });
+    }
 
     return {
       success: true,

@@ -12,6 +12,7 @@ import { BudgetsModule } from './budgets/budgets.module';
 import { CronModule } from './cron/cron.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { DevicesModule } from './devices/devices.module';
 import { TimezoneMiddleware } from './common/middlewares/timezone.middleware';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 
@@ -35,6 +36,7 @@ import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor
     CronModule,
     AuditLogsModule,
     AttachmentsModule,
+    DevicesModule,
   ],
   providers: [
     {

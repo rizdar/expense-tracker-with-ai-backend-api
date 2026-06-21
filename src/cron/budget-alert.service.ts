@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { BudgetsService } from '../budgets/budgets.service';
+import { FcmService } from '../fcm/fcm.service';
 
 @Injectable()
 export class BudgetAlertService {
@@ -10,6 +11,7 @@ export class BudgetAlertService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly budgetsService: BudgetsService,
+    private readonly fcmService: FcmService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -71,8 +73,16 @@ export class BudgetAlertService {
       `(${spent}/${amount}).`,
     );
 
-    // TODO Fase 7: Kirim push notification via FCM
-    // TODO Fase 8: Kirim email via SMTP
+    // Send push notification to workspace OWNER and ADMIN members
+    await this.fcmService.sendToWorkspaceMembers(budget.workspaceId, {
+      title: 'Budget Alert',
+      body: `Budget '${budget.name}' has reached ${percentage.toFixed(0)}% of its limit.`,
+      data: {
+        type: 'BUDGET_ALERT',
+        budgetId: budget.id,
+        workspaceId: budget.workspaceId,
+      },
+    });
 
     const updateData: any = {};
     if (threshold === 80) updateData.alert80Sent = true;
