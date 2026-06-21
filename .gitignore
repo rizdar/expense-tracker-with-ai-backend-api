@@ -1,5 +1,42 @@
-node_modules
-# Keep environment variables out of version control
-.env
+# Compile/Build
+dist
+tsconfig.tsbuildinfo
 
-/generated/prisma
+# Dependencies
+node_modules
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*firebase-service-account*.json
+*.pem
+*.key
+
+# Temporary/Uploads
+/uploads
+/temp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test
+/coverage
+
+# OS/System
+.DS_Store
+Thumbs.db
+
+# IDE/Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
