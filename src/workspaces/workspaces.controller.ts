@@ -22,6 +22,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceRoleGuard } from '../common/guards/workspace-role.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { SkipAudit } from '../common/decorators/skip-audit.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -30,6 +31,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 
+@SkipAudit()
 @ApiTags('Workspaces')
 @Controller('workspaces')
 export class WorkspacesController {

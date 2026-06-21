@@ -146,6 +146,8 @@ model Budget {
   startDate   DateTime?
   endDate     DateTime?
   deletedAt   DateTime?
+  alert80Sent Boolean   @default(false)
+  alert100Sent Boolean  @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)

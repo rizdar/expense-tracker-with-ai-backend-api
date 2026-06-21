@@ -14,11 +14,14 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader, ApiResponse } from '@n
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { WorkspaceId } from '../common/decorators/workspace-id.decorator';
 import { WorkspaceIdPipe } from '../common/pipes/workspace-id.pipe';
+import { SkipAudit } from '../common/decorators/skip-audit.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CategoryQueryDto } from './dto/category-query.dto';
+import { Throttle, minutes } from '@nestjs/throttler';
 
+@SkipAudit()
 @ApiTags('Categories')
 @ApiBearerAuth()
 @ApiHeader({
@@ -28,6 +31,7 @@ import { CategoryQueryDto } from './dto/category-query.dto';
 })
 @UseGuards(JwtAuthGuard)
 @Controller('categories')
+@Throttle({ default: { limit: 60, ttl: minutes(1) } })
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 

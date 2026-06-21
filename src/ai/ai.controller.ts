@@ -21,6 +21,7 @@ import { AiService } from './ai.service';
 import { QuotaService } from './quota.service';
 import { ParseChatDto } from './dto/parse-chat.dto';
 import { InsightsQueryDto } from './dto/insights-query.dto';
+import { Throttle, minutes } from '@nestjs/throttler';
 
 @ApiTags('AI')
 @ApiBearerAuth()
@@ -31,6 +32,7 @@ import { InsightsQueryDto } from './dto/insights-query.dto';
 })
 @UseGuards(JwtAuthGuard, WorkspaceRoleGuard)
 @Controller('ai')
+@Throttle({ default: { limit: 30, ttl: minutes(1) } })
 export class AiController {
   constructor(
     private readonly aiService: AiService,

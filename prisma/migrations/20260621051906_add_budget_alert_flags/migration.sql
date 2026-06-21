@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Budget" ADD COLUMN     "alert100Sent" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "alert80Sent" BOOLEAN NOT NULL DEFAULT false;

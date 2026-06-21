@@ -19,7 +19,10 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { TransactionQueryDto } from './dto/transaction-query.dto';
 import { PermanentDeleteTransactionDto } from './dto/permanent-delete-transaction.dto';
+import { SkipAudit } from '../common/decorators/skip-audit.decorator';
+import { Throttle, minutes } from '@nestjs/throttler';
 
+@SkipAudit()
 @ApiTags('Transactions')
 @ApiBearerAuth()
 @ApiHeader({
@@ -29,6 +32,7 @@ import { PermanentDeleteTransactionDto } from './dto/permanent-delete-transactio
 })
 @UseGuards(JwtAuthGuard)
 @Controller('transactions')
+@Throttle({ default: { limit: 60, ttl: minutes(1) } })
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 

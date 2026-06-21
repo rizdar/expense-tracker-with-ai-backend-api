@@ -28,11 +28,14 @@ import {
   ApiBearerAuth,
   ApiBody,
 } from '@nestjs/swagger';
+import { Throttle, minutes, hours } from '@nestjs/throttler';
 
 @ApiTags('Auth')
 @Controller('auth')
+@Throttle({ default: { limit: 10, ttl: minutes(1) } })
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
 
   @Post('register')
   @ApiOperation({ summary: 'Register new user' })
@@ -76,6 +79,7 @@ export class AuthController {
     return this.authService.verifyEmail(dto);
   }
 
+  @Throttle({ default: { limit: 3, ttl: hours(1) } })
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Resend verification email' })
